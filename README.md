@@ -1,8 +1,5 @@
-# ComicMerge [Fork]
-
-## Description
-
-This is a simple tool that allows you to merge multiple .cbz files into a single .cbz file.
+# manga-merge
+> simple cli to merge multiple .cbz files into one
 
 ## Usage
 ```
@@ -32,7 +29,6 @@ options:
 - The `-f`/`--folders` flag was tested on PocketBook Touch Lux 4, it does create chapters internally in it's reader.
 
 
-
 ## TODO
 - [ ] select input folder
 - [ ] cleanup flag: delete comics afterwards
@@ -40,6 +36,9 @@ options:
 - [x] don't flatten flag
 - [x] progress bar
 
-## License
+## Credits
+- Based on [ComicMerge](https://github.com/khutchins/ComicMerge) by khutchins, thanks to him for the original code
+  - as per the ComicMerge's licence, ComicMerge or it's creator (khutchins) does not endorse or is associated with this version of the project
 
+## License
 This project is licensed under the BSD license. For more information, check out LICENSE.md.
