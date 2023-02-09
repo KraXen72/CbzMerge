@@ -1,4 +1,4 @@
-# ComicMerge v2
+# CbzMerge
 > simple cli to merge multiple .cbz files into one
 
 ## Usage
