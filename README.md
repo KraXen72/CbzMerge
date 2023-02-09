@@ -37,7 +37,5 @@ options:
 - This script will probably work on Linux, Mac, and Windows, but it has only been tested on Windows.
 - The `-f`/`--folders` flag was tested on PocketBook Touch Lux 4, it does create chapters internally in it's reader.
 
-
-
-## License
+## license
 This project is licensed under the BSD license. For more information, check out LICENSE.md.
