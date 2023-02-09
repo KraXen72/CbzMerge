@@ -164,8 +164,7 @@ class ComicMerge:
 		comics = []
 		comic_idx = 1
 		for file_name in all_comics:
-			if start_idx <= comic_idx and (comic_idx <= end_idx
-										   or end_idx < 0):
+			if start_idx <= comic_idx and (comic_idx <= end_idx or end_idx < 0):
 				comics.append(file_name)
 			comic_idx += 1
 		return comics
