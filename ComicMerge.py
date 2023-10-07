@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import zipfile
 from os.path import join
@@ -7,14 +8,23 @@ import patoolib
 
 # utils to be moved ig
 
+fn_number_pattern = re.compile(r"\d+")
+
 def log(msg, verbose):
 	"""only logs if verbose == True. accesible outside"""
 	if verbose:
 		print(msg)
 
-def safe_remove_file(file_name):
+def safe_remove(file_name):
 	if os.path.exists(file_name):
 		os.remove(file_name)
+
+def get_filename_number(file_name):
+	matches = fn_number_pattern.findall(file_name)
+	if len(matches) > 0:
+		return matches[-1]
+	else:
+		return ""
 
 def flatten_tree(abs_directory):
 	"""destructively flattens directory tree to only include files, no folders"""
@@ -107,11 +117,19 @@ class ComicMerge:
 
 	def _extract_comics(self, comics_to_extract, temp_dir):
 		print("started extracting...")
+		first_archive = -1
+		last_archive = -1
 		for i, file_name in enumerate(comics_to_extract):
 			if self.cbr:
 				ComicMerge._extract_cbr(self, file_name, temp_dir, self.is_verbose)
 			else:
 				ComicMerge._extract_cbz(self, file_name, temp_dir, self.is_verbose)
+				
+			archive_num = get_filename_number(file_name)
+			if i == 0:
+				first_archive = archive_num
+			if i == len(comics_to_extract) - 1:
+				last_archive = archive_num
 
 			progress = i / len(comics_to_extract)
 			bar_width = 50
@@ -126,6 +144,8 @@ class ComicMerge:
 		bar = "[" + "=" * done + "-" * (bar_width - done) + "]"
 		print(f"\r{100}% {bar}", flush=True)
 
+		print(f"first archive: {first_archive}, last archive: {last_archive}")
+
 		if self.keep_subfolders:
 			print("keeping subfolders for chapters")
 			# rename the folders to something more readable: ch001, ch002 etc.
@@ -137,6 +157,7 @@ class ComicMerge:
 				os.rename(join(temp_dir, folder), join(temp_dir, new_name))
 		else:
 			# Flatten file structure (subdirectories mess with some readers)
+			# 
 			files_moved = 1
 			for path_to_dir, subdir_names, file_names in os.walk(temp_dir, False):
 				for file_name in file_names:
@@ -225,19 +246,21 @@ class ComicMerge:
 
 	def merge(self):
 		# Remove existing existing output file, if any (we're going to overwrite it anyway)
-		safe_remove_file(self.output_name)
+		safe_remove(self.output_name)
 
 		self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
 
 		# Find and create temporary directory
 		temp_dir = self._find_temp_folder()
-		try:
-			os.remove(temp_dir)
-		except:
-			pass
+
+		safe_remove(temp_dir)
 		os.mkdir(temp_dir)
 
-		#FIXME doesen't work with -f flag yet
+		# TODO doesen't work with -f flag yet
+		# TODO chunk splitting support
+		# TODO create a indexed chunk folder
+		# TODO handle max being lower than 1 zip / negative (check sizes beforehand)
+		# TODO properly name the chunks by index (all), range (where possible)
 		self._extract_comics(self.comics_to_merge, temp_dir)
 		self._make_cbz_from_dir(temp_dir)
 

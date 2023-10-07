@@ -4,6 +4,7 @@ from ComicMerge import ComicMerge
 
 parser = argparse.ArgumentParser(prog="ComicMerge", description="Merge multiple cbz files into one.")
 parser.add_argument("-f", "--folder", type=str, help="Input folder for comics. If blank, uses current working directory of script.")
+parser.add_argument("-m", "--max", type=int, help="Max size for output file in MB. produces multiple chunk files if over limit")
 parser.add_argument(
 	"output_name", metavar="OUTPUT_FILE", type=str, help="Name of the .cbz file to be created. Will automatically append .cbz if necessary."
 )
@@ -19,6 +20,7 @@ parser.add_argument(
 )
 parser.add_argument("-c", "--chapters", action="store_true", help="Don't flatten the directory tree, keep subfolders as chapters")
 parser.add_argument("--cbr", action="store_true", help="Look for .cbr files instead of .cbz")
+
 # parser.add_argument("-z", "--cbz", action="", help="Look only for .cbz files (default)")
 args = parser.parse_args()
 
