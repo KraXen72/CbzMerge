@@ -25,6 +25,46 @@ def get_filename_number(file_name):
 		return matches[-1]
 	else:
 		return ""
+	
+def comics_from_prefix(prefix, cbr=False, workdir="."):
+		all_comics = comics_in_folder(cbr, workdir=workdir)
+		comics = []
+		for file_name in all_comics:
+			if file_name.startswith(prefix):
+				comics.append(file_name)
+		return comics
+
+def comics_from_indices(start_idx, end_idx, cbr=False, workdir="."):
+		# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
+		# Passing in an end_idx of < 0 will cause it to end at the end of the folder
+		# Both start_idx and end_idx are inclusive
+		# Index count starts at 1
+		all_comics = comics_in_folder(cbr, workdir=workdir)
+		comics = []
+		comic_idx = 1
+		for file_name in all_comics:
+			if start_idx <= comic_idx and (comic_idx <= end_idx or end_idx < 0):
+				comics.append(file_name)
+			comic_idx += 1
+		return comics
+
+def comics_in_folder(cbr=False, workdir="."):
+		comics = []
+		comic_ext = ".cbr" if cbr is True else ".cbz"
+		# We're not traversing subdirectories because that's a boondoggle
+		for file_name in os.listdir(workdir):
+			if os.path.splitext(file_name)[1] == comic_ext:
+				comics.append(file_name)
+		return comics
+
+def find_temp_folder():
+		base_dir = "temp_merge"
+		mod = 0
+		temp_dir = base_dir
+		while os.path.exists(temp_dir):
+			mod += 1
+			temp_dir = base_dir + str(mod)
+		return temp_dir
 
 def flatten_tree(abs_directory):
 	"""destructively flattens directory tree to only include files, no folders"""
@@ -75,16 +115,6 @@ class ComicMerge:
 	def _log(self, msg):
 		"""only logs if verbose == True. internal"""
 		log(msg, self.is_verbose)
-	
-	@staticmethod
-	def _find_temp_folder():
-		base_dir = "temp_merge"
-		mod = 0
-		temp_dir = base_dir
-		while os.path.exists(temp_dir):
-			mod += 1
-			temp_dir = base_dir + str(mod)
-		return temp_dir
 
 	def _extract_cbz(self, file_name, destination, verbose):
 		"""
@@ -209,41 +239,6 @@ class ComicMerge:
 					if add_count % 10 == 0:
 						print("> " + str(add_count) + " files added.", end="\r")
 
-	@staticmethod
-	def comics_from_indices(start_idx, end_idx, cbr=False, workdir="."):
-		# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
-		# Passing in an end_idx of < 0 will cause it to end at the end of the folder
-		# Both start_idx and end_idx are inclusive
-		# Index count starts at 1
-		all_comics = ComicMerge.comics_in_folder(cbr, workdir=workdir)
-		comics = []
-		comic_idx = 1
-		for file_name in all_comics:
-			if start_idx <= comic_idx and (comic_idx <= end_idx or end_idx < 0):
-				comics.append(file_name)
-			comic_idx += 1
-		return comics
-
-	@staticmethod
-	def comics_from_prefix(prefix, cbr=False, workdir="."):
-		all_comics = ComicMerge.comics_in_folder(cbr, workdir=workdir)
-		comics = []
-		for file_name in all_comics:
-			if file_name.startswith(prefix):
-				comics.append(file_name)
-		return comics
-
-	@staticmethod
-	def comics_in_folder(cbr=False, workdir="."):
-		comics = []
-		comic_ext = ".cbr" if cbr is True else ".cbz"
-		# We're not traversing subdirectories because that's a boondoggle
-		# TODO implement ^^
-		for file_name in os.listdir(workdir):
-			if os.path.splitext(file_name)[1] == comic_ext:
-				comics.append(file_name)
-		return comics
-
 	def merge(self):
 		# Remove existing existing output file, if any (we're going to overwrite it anyway)
 		safe_remove(self.output_name)
@@ -251,7 +246,7 @@ class ComicMerge:
 		self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
 
 		# Find and create temporary directory
-		temp_dir = self._find_temp_folder()
+		temp_dir = find_temp_folder()
 
 		safe_remove(temp_dir)
 		os.mkdir(temp_dir)

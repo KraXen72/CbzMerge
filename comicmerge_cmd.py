@@ -1,6 +1,6 @@
 import argparse
 
-from ComicMerge import ComicMerge
+from ComicMerge import ComicMerge, comics_from_indices, comics_from_prefix, comics_in_folder
 
 parser = argparse.ArgumentParser(prog="ComicMerge", description="Merge multiple cbz files into one.")
 parser.add_argument("-f", "--folder", type=str, help="Input folder for comics. If blank, uses current working directory of script.")
@@ -29,14 +29,14 @@ if workdir is None:
 	workdir = "."
 
 if args.prefix is not None:  # prefix is king
-	comics_to_merge = ComicMerge.comics_from_prefix(args.prefix, args.cbr, workdir=workdir)
+	comics_to_merge = comics_from_prefix(args.prefix, args.cbr, workdir=workdir)
 elif args.range is not None:  # fallback to range
 	if (len(args.range)) == 0:
-		comics_to_merge = ComicMerge.comics_from_indices(0, -1, args.cbr, workdir=workdir)
+		comics_to_merge = comics_from_indices(0, -1, args.cbr, workdir=workdir)
 	else:
-		comics_to_merge = ComicMerge.comics_from_indices(args.range[0], args.range[1], args.cbr, workdir=workdir)
+		comics_to_merge = comics_from_indices(args.range[0], args.range[1], args.cbr, workdir=workdir)
 else:  # no range = all comics in folder
-	comics_to_merge = ComicMerge.comics_in_folder(args.cbr, workdir=workdir)
+	comics_to_merge = comics_in_folder(args.cbr, workdir=workdir)
 
 if (len(comics_to_merge) == 0):
 	print("Found no cbz files for merging. use flag --cbr to look for .cbr files")
