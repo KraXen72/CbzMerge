@@ -20,6 +20,7 @@ options:
   -r start end, --range start end
                         Specified by the format X Y. Only the Xth to Yth comic in the folder will be merged into the output file.
   -c, --chapters        Don't flatten the directory tree, keep subfolders as chapters
+  --cbr					Look for .cbr files instead of .cbz
 ```
 ## credits
 - Based on [ComicMerge](https://github.com/khutchins/ComicMerge) by khutchins
@@ -30,6 +31,7 @@ options:
 - works without providing either range or prefix (merges all comics in folder)
 - `-c`/`--chapters` flag, outputs a cbz with internally separated chapters by folders
 - `-f`/`--folder` flag, provide path to your comics that will be read & processed. comics there are not touched.
+- `--cbr` flag, to support reading cbr files (output is still cbz)
 - proper information about merging progress in stdout
 - under the hood rewrites
   
