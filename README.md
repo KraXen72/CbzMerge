@@ -32,8 +32,7 @@ options:
 - `-c`/`--chapters` flag, outputs a cbz with internally separated chapters by folders
 - `-f`/`--folder` flag, provide path to your comics that will be read & processed. comics there are not touched.
 - `--cbr` flag, to support reading cbr files (output is still cbz)
-- proper information about merging progress in stdout
-- under the hood rewrites
+- proper information about merging progress in stdout - with visual&percentage progress bar!
   
 ### notes:
 - This script will probably work on Linux, Mac, and Windows, but it has only been tested on Windows.
