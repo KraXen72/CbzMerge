@@ -34,6 +34,17 @@ def comics_from_prefix(prefix, cbr=False, workdir="."):
 				comics.append(file_name)
 		return comics
 
+def progress_bar(curr_index, total_len, bar_width="50", end = "\n", percent_overwrite=-1):
+	progress = curr_index / total_len
+	done = int(bar_width * progress)
+	percent = int(progress * 100)
+	if percent_overwrite >= 0 and percent_overwrite <= 100:
+		percent = percent_overwrite
+
+	# Print the progress bar on the same line with a custom end
+	print(f"\r{percent:>3}% [{'=' * done}{'-' * (bar_width - done)}]", end=end, flush=True)
+
+
 def comics_from_indices(start_idx, end_idx, cbr=False, workdir="."):
 		# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
 		# Passing in an end_idx of < 0 will cause it to end at the end of the folder
@@ -161,18 +172,9 @@ class ComicMerge:
 			if i == len(comics_to_extract) - 1:
 				last_archive = archive_num
 
-			progress = i / len(comics_to_extract)
-			bar_width = 50
-			done = int(bar_width * progress)
-			bar = "[" + "=" * done + "-" * (bar_width - done) + "]"
-			percent = int(progress * 100)
+			progress_bar(i, len(comics_to_extract), 50, "")
 
-			# Print the progress bar on the same line with a custom end
-			print(f"\r{percent}% {bar}", end="", flush=True)
-
-		done = int(bar_width * 1)
-		bar = "[" + "=" * done + "-" * (bar_width - done) + "]"
-		print(f"\r{100}% {bar}", flush=True)
+		progress_bar(1, 1, 50, percent_overwrite=100)
 
 		print(f"first archive: {first_archive}, last archive: {last_archive}")
 

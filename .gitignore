@@ -170,3 +170,6 @@ pip-log.txt
 temp_merge
 temp_merge/*
 temp_merge/**/*
+temp_merge*
+temp_merge*/*
+temp_merge*/**/*
