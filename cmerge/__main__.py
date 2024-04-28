@@ -46,7 +46,7 @@ from .cbzmerge import ComicMerge, comics_from_indices, comics_from_prefix, comic
 @click.argument("output", type=str, required=True)
 @click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=".", help="Input folder for comics. If blank, uses current working directory of script.")
 @click.option("--prefix", "-p", type=str, help="Filename prefix filter to restrict input comics")
-@click.option("--range", "-r", "range_", type=click.IntRange(min=1, clamp=True), nargs=2, default=(0, -1), help="Range (start, end) (inclusive) of comics in folder to merge", )
+@click.option("--range", "-r", "range_", type=click.IntRange(), nargs=2, default=(0, -1), help="Range (start, end) (inclusive) of comics in folder to merge", )
 @click.option("--chapters", "-c", is_flag=True, help="Don't flatten the directory tree, keep subfolders as chapters")
 @click.option("--cbr", is_flag=True, help="Look for .cbr files instead of .cbz")
 @click.option("--quieter", "-q", is_flag=True, help="Less information regarding the merging progress")
@@ -66,7 +66,7 @@ def cli(
 
 	if prefix is not None:  # prefix is king
 		comics_to_merge = comics_from_prefix(prefix, cbr, workdir=folder)
-	elif range_ is not None:  # fallback to range
+	elif range_ is not None and not (range_[0] == 0 and range_[1] == -1): # fallback to range
 		comics_to_merge = comics_from_indices(range_[0], range_[1], cbr, workdir=folder)
 	else:  # no range = all comics in folder
 		comics_to_merge = comics_in_folder(cbr, workdir=folder)
