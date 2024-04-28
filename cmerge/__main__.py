@@ -1,3 +1,5 @@
+import os
+
 import click
 
 from .cbzmerge import ComicMerge, comics_from_indices, comics_from_prefix, comics_in_folder
@@ -44,7 +46,7 @@ from .cbzmerge import ComicMerge, comics_from_indices, comics_from_prefix, comic
 
 @click.command()
 @click.argument("output", type=str, required=True)
-@click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=".", help="Input folder for comics. If blank, uses current working directory of script.")
+@click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=os.getcwd(), help="Input folder for comics. If blank, uses current working directory of script.")
 @click.option("--prefix", "-p", type=str, help="Filename prefix filter to restrict input comics")
 @click.option("--range", "-r", "range_", type=click.IntRange(), nargs=2, default=(0, -1), help="Range (start, end) (inclusive) of comics in folder to merge", )
 @click.option("--chapters", "-c", is_flag=True, help="Don't flatten the directory tree, keep subfolders as chapters")
@@ -61,15 +63,20 @@ def cli(
 	cbr: bool,
 	quieter: bool, 
 ):
-	print(output, folder, prefix, range_, chapters, cbr, not quieter)
+	print(output, folder, "prefix", prefix, "range", range_)
 	comics_to_merge = []
+	folder = os.path.abspath(folder)
 
 	if prefix is not None:  # prefix is king
 		comics_to_merge = comics_from_prefix(prefix, cbr, workdir=folder)
-	elif range_ is not None and not (range_[0] == 0 and range_[1] == -1): # fallback to range
+	elif range_ is not None and (range_[0] != 0 and range_[1] != -1): # fallback to range
 		comics_to_merge = comics_from_indices(range_[0], range_[1], cbr, workdir=folder)
 	else:  # no range = all comics in folder
 		comics_to_merge = comics_in_folder(cbr, workdir=folder)
+
+	if (len(comics_to_merge) == 0):
+		print("Found no cbz files for merging. use flag --cbr to look for .cbr files")
+		quit()
 
 	comic_merge = ComicMerge(output, comics_to_merge, not quieter, chapters, cbr, workdir=folder)
 	comic_merge.merge()

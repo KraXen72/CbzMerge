@@ -66,6 +66,7 @@ def comics_from_indices(start_idx, end_idx, cbr=False, workdir="."):
 
 
 def comics_in_folder(cbr=False, workdir="."):
+	print(workdir)
 	comics = []
 	comic_ext = ".cbr" if cbr is True else ".cbz"
 	# We're not traversing subdirectories because that's a boondoggle
@@ -127,9 +128,6 @@ class ComicMerge:
 		self.cbr = cbr
 
 		self.workdir = workdir  # comic location
-		self.abspath = os.path.dirname(os.path.abspath(__file__))  # script's location
-		if workdir is None:
-			self.workdir = self.abspath
 
 	def _log(self, msg):
 		"""only logs if verbose == True. internal"""
@@ -147,7 +145,7 @@ class ComicMerge:
 		archive = rarfile.RarFile(archive_path) if self.cbr else zipfile.ZipFile(archive_path)
 		archive.extractall(output_dir)
 		archive.close()
-		flatten_tree(join(self.abspath, output_dir))
+		flatten_tree(join(self.workdir, output_dir))
 		if self.is_verbose:
 			print(f"> extracted {file_name}")
 
