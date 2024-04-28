@@ -4,7 +4,7 @@ import shutil
 import zipfile
 from os.path import join
 
-import patoolib
+import rarfile
 
 # utils to be moved ig
 
@@ -34,7 +34,7 @@ def comics_from_prefix(prefix, cbr=False, workdir="."):
 				comics.append(file_name)
 		return comics
 
-def progress_bar(curr_index, total_len, bar_width="50", end = "\n", percent_overwrite=-1):
+def progress_bar(curr_index, total_len, bar_width=50, end = "\n", percent_overwrite=-1):
 	progress = curr_index / total_len
 	done = int(bar_width * progress)
 	percent = int(progress * 100)
@@ -127,7 +127,7 @@ class ComicMerge:
 		"""only logs if verbose == True. internal"""
 		log(msg, self.is_verbose)
 
-	def _extract_cbz(self, file_name, destination, verbose):
+	def _extract_archive(self, file_name, destination):
 		"""
 		file_name = only filename.ext, no path.
 		destination = temp folder
@@ -135,25 +135,12 @@ class ComicMerge:
 	
 		output_dir = join(destination, os.path.splitext(file_name)[0])
 		os.mkdir(output_dir)
-		zip_file = zipfile.ZipFile(join(self.workdir, file_name))
-		zip_file.extractall(output_dir)
-		zip_file.close()
+		archive_path = join(self.workdir, file_name)
+		archive = rarfile.RarFile(archive_path) if self.cbr else zipfile.ZipFile(archive_path) 
+		archive.extractall(output_dir)
+		archive.close()
 		flatten_tree(join(self.abspath, output_dir))
-		if verbose:
-			print(f"> extracted {file_name}")
-
-	def _extract_cbr(self, file_name, destination, verbose):
-		"""
-		file_name = only filename.ext, no path.
-		destination = temp folder
-		"""
-	
-		output_dir = join(destination, os.path.splitext(file_name)[0])
-		os.mkdir(output_dir)
-		
-		patoolib.extract_archive(join(self.workdir, file_name), outdir=output_dir, verbosity=-1)
-		flatten_tree(join(self.abspath, output_dir))
-		if verbose:
+		if self.is_verbose:
 			print(f"> extracted {file_name}")
 
 	def _extract_comics(self, comics_to_extract, temp_dir):
@@ -161,10 +148,7 @@ class ComicMerge:
 		first_archive = -1
 		last_archive = -1
 		for i, file_name in enumerate(comics_to_extract):
-			if self.cbr:
-				ComicMerge._extract_cbr(self, file_name, temp_dir, self.is_verbose)
-			else:
-				ComicMerge._extract_cbz(self, file_name, temp_dir, self.is_verbose)
+			self._extract_archive(file_name, temp_dir)
 				
 			archive_num = get_filename_number(file_name)
 			if i == 0:

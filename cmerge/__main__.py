@@ -1,6 +1,6 @@
-import argparse
+import click
 
-from ComicMerge import ComicMerge, comics_from_indices, comics_from_prefix, comics_in_folder
+from .cbzmerge import ComicMerge, comics_from_indices, comics_from_prefix, comics_in_folder
 
 parser = argparse.ArgumentParser(prog="ComicMerge", description="Merge multiple cbz files into one.")
 parser.add_argument("-f", "--folder", type=str, help="Input folder for comics. If blank, uses current working directory of script.")
@@ -41,5 +41,20 @@ if (len(comics_to_merge) == 0):
 	print("Found no cbz files for merging. use flag --cbr to look for .cbr files")
 	quit()
 
-comic_merge = ComicMerge(args.output_name, comics_to_merge, args.verbose, args.chapters, args.cbr, workdir=args.folder)
-comic_merge.merge()
+
+@click.command()
+@click.argument("output", type=str, required=True, nargs=1, help="Name of the .cbz file to be created. Will automatically append .cbz if necessary.")
+@click.option("--folder", "-f", type=click.Path, default=".", help="Input folder for comics. If blank, uses current working directory of script.")
+@click.option("--verbose", "-v", is_flag=True, help="More information as to the merging progress")
+@click.option("--prefix", "-p", type=str, help="Filename prefix filter to restrict input comics")
+@click.option("--range", "-r", type=click.IntRange, min=1, clamp=True, help="Range of comics to merge")
+def cli(
+	output_name, 
+	comics_to_merge, 
+	verbose,
+	chapters, 
+	cbr, 
+	workdir
+):
+	comic_merge = ComicMerge(args.output_name, comics_to_merge, args.verbose, args.chapters, args.cbr, workdir=args.folder)
+	comic_merge.merge()
