@@ -70,7 +70,7 @@ def cli(
 	if prefix is not None:  # prefix is king
 		comics_to_merge = comics_from_prefix(prefix, cbr, workdir=folder)
 	elif range_ is not None and (range_[0] != 0 and range_[1] != -1): # fallback to range
-		comics_to_merge = comics_from_indices(range_[0], range_[1], cbr, workdir=folder)
+		comics_to_merge = comics_from_indices(range_[0], range_[1], cbr=cbr, workdir=folder)
 	else:  # no range = all comics in folder
 		comics_to_merge = comics_in_folder(cbr, workdir=folder)
 
