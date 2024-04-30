@@ -3,13 +3,14 @@ import os
 from pathlib import Path
 
 import click
+from natsort import natsorted  # pyright: ignore
 
-from .cbzmerge import ALLOWED_EXTENSIONS, ComicMerge, comics_in_folder
+from .cbzmerge import ARCHIVE_EXTENSIONS, ComicMerge
 
 
 @click.command()
-@click.argument("output", type=str, required=True)
-@click.argument("inputs", type=str, nargs=-1)
+@click.argument("output", type=str, nargs=1)
+@click.option("--in", "-i", "input_glob", multiple=True,type=str, required=True, help=f"Input glob (relative to --folder). allowed extensions: {", ".join(ARCHIVE_EXTENSIONS)}. use -i='*.cbz' or w/e in powershell.")
 @click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=os.getcwd(), help="Input folder for comics. If blank, uses current working directory of script.")
 @click.option("--range", "-r", "range_", type=click.IntRange(), nargs=2, default=(0, -1), help="Range (start, end) (inclusive, 1-indexed) of comics in folder to merge", )
 @click.option("--chapters", "-c", is_flag=True, help="Don't flatten the directory tree, keep subfolders as chapters")
@@ -17,28 +18,34 @@ from .cbzmerge import ALLOWED_EXTENSIONS, ComicMerge, comics_in_folder
 @click.version_option("1.0.0")
 @click.help_option("-h", "--help")
 def cli(
+	input_glob: list[str] | str,
 	output: str,
-	inputs: list[str],
 	folder: str,
 	range_: tuple[int, int] | None,
 	chapters: bool,
 	quieter: bool, 
 ):
-	print(output, folder, "range", range_)
-	comics_to_merge = []
+	comics_to_merge: list[str] = []
 	folder = os.path.abspath(folder)
+	print(folder, "in", input_glob, "out", output, "range", range_)
 
-	if inputs:  # if inputs are provided, use them instead of searching the folder
-		for pattern in inputs:
-			for file_path in glob.glob(os.path.join(folder, pattern)):
-				if Path(file_path).suffix.lower() in ALLOWED_EXTENSIONS:
-					comics_to_merge.append(file_path)
-	else:
-		comics_to_merge = comics_in_folder(workdir=folder)
+	# if input_glob:
+	if isinstance(input_glob, str):
+		input_glob = [ input_glob ]
+	for pattern in input_glob:
+		if pattern.startswith("="):
+			pattern = pattern[1:]
+		for file_path in natsorted(glob.glob(pattern, root_dir=folder)):
+			if Path(file_path).suffix.lower() in ARCHIVE_EXTENSIONS:
+				comics_to_merge.append(file_path)
+	# else:
+	# 	comics_to_merge = comics_in_folder(workdir=folder)
 
-	if range_ is not None and (range_[0] != 0 and range_[1] != -1): # fallback to range
+	if range_ is not None: # fallback to range
 		start_idx = max(range_[0]-1, 0)
 		end_idx = min(len(comics_to_merge), range_[1])
+		if end_idx == -1:
+			end_idx = len(comics_to_merge)
 		comics_to_merge = comics_to_merge[start_idx:end_idx]
 
 	if (len(comics_to_merge) == 0):

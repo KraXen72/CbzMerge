@@ -6,7 +6,10 @@ import zipfile
 from pathlib import Path
 
 import click
+import filetype
 import rarfile
+
+from cmerge.comicinfo import parse_comicinfo
 
 # utils to be moved ig
 
@@ -14,7 +17,7 @@ fn_number_pattern = re.compile(r"\d+")
 
 ALLOWED_ZIP = [".cbz", ".zip"]
 ALLOWED_RAR = [".cbr", ".rar"]
-ALLOWED_EXTENSIONS = [
+ARCHIVE_EXTENSIONS = [
 	*ALLOWED_ZIP,
 	*ALLOWED_RAR
 	# ".cbt", # tar
@@ -65,11 +68,10 @@ def comics_from_indices(start_idx, end_idx, workdir="."):
 
 
 def comics_in_folder(workdir="."):
-	print(workdir)
 	comics = []
 	# We're not traversing subdirectories because that's a boondoggle
 	for file_name in os.listdir(workdir):
-		if Path(file_name).suffix.lower() in ALLOWED_EXTENSIONS:
+		if Path(file_name).suffix.lower() in ARCHIVE_EXTENSIONS:
 			comics.append(file_name)
 	return comics
 
@@ -101,7 +103,7 @@ def flatten_tree(abs_directory):
 	os.mkdir(file_dump_path)
 
 	file_counter = 1
-	for path_to_dir, subdir_names, file_names in os.walk(abs_directory, True):  # move all files to 1 folder
+	for path_to_dir, subdir_names, file_names in os.walk(abs_directory, True): # walk to dump all files to 1 folder
 		for f in file_names:
 			if ".nomedia" in f:
 				os.remove(fsp.join(path_to_dir, f))
@@ -110,21 +112,17 @@ def flatten_tree(abs_directory):
 		if len(subdir_names) == 0 and (abs_directory == path_to_dir):
 			break
 
-		for f in file_names:
+		for f in file_names: # dump all of current directory's files into it's dump dir
 			new_name = fsp.join(path_to_dir, rename_page(file_counter, Path(f).suffix))
 			os.rename(fsp.join(path_to_dir, f), fsp.join(path_to_dir, new_name))
 			shutil.move(new_name, fsp.join(file_dump_path, f))
 			file_counter += 1
 
-	for subdir in os.scandir(abs_directory):  # yeet all other subdirectories
-		if subdir.path.endswith("_dir_files"):
-			continue
-		shutil.rmtree(subdir.path)
+	for f in os.listdir(file_dump_path): # move all dumped files into abs_directory
+		shutil.move(fsp.join(file_dump_path, f), fsp.join(abs_directory, f))
 
-	new_path = os.path.split(file_dump_path)[0]
-	for f in os.listdir(file_dump_path):
-		shutil.move(fsp.join(file_dump_path, f), fsp.join(new_path, f))
-	os.rmdir(file_dump_path)
+	for folder in listdir_dirs(abs_directory): # sanity check clean all empty folders
+		shutil.rmtree(fsp.join(abs_directory, folder))
 
 
 class ComicMerge:
@@ -195,7 +193,18 @@ class ComicMerge:
 			last_chapter_digits = len(str(len(folders)))  # number of digits the last chapter requires
 			for i in range(len(folders)):
 				folder = folders[i]
-				new_name = "ch" + str(i + 1).zfill(last_chapter_digits + 1)
+				new_name = "Chapter " + str(i + 1).zfill(last_chapter_digits + 1)
+				
+				folder_abs = fsp.join(self.temp_dir, folder)
+				for rf in listdir_files(folder_abs):
+					file_path = fsp.join(folder_abs, rf)
+					if not filetype.is_image(file_path):
+						if rf == "ComicInfo.xml":
+							chapter_info = parse_comicinfo(file_path)
+							if chapter_info.get("Title") is not None:
+								new_name = str(chapter_info.get("Title"))
+						os.remove(file_path)
+			
 				os.rename(fsp.join(self.temp_dir, folder), fsp.join(self.temp_dir, new_name))
 		else:
 			# Flatten file structure (subdirectories mess with some readers)
@@ -203,6 +212,11 @@ class ComicMerge:
 			for path_to_dir, subdir_names, file_names in os.walk(self.temp_dir, False):
 				for file_name in file_names:
 					file_path = fsp.join(path_to_dir, file_name)
+
+					if not filetype.is_image(file_path):
+						os.remove(file_path)
+						continue
+
 					ext = os.path.splitext(file_name)[1]
 					new_name = rename_page(files_moved, ext)
 					# log("Renaming & moving " + file_name + " to " + new_name, self.is_verbose)
@@ -214,6 +228,7 @@ class ComicMerge:
 				# because it is traversed from the bottom up instead of top down
 				for subdir_name in subdir_names:
 					shutil.rmtree(fsp.join(path_to_dir, subdir_name))
+			
 
 	def _tempdir_to_cbz(self):
 		zip_file = zipfile.ZipFile(self.output_name, "w", zipfile.ZIP_DEFLATED)
@@ -245,11 +260,6 @@ class ComicMerge:
 		safe_remove(self.temp_dir)
 		os.mkdir(self.temp_dir)
 
-		# TODO doesen't work with -f flag yet
-		# TODO chunk splitting support
-		# TODO create a indexed chunk folder
-		# TODO handle max being lower than 1 zip / negative (check sizes beforehand)
-		# TODO properly name the chunks by index (all), range (where possible)
 		self._extract_comics(self.comics_to_merge)
 		self._tempdir_to_cbz()
 
