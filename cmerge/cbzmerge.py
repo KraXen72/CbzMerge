@@ -49,17 +49,6 @@ def comics_from_prefix(prefix, workdir="."):
 	return comics
 
 
-def progress_bar(curr_index, total_len, bar_width=50, end="\n", percent_overwrite=-1):
-	progress = curr_index / total_len
-	done = int(bar_width * progress)
-	percent = int(progress * 100)
-	if percent_overwrite >= 0 and percent_overwrite <= 100:
-		percent = percent_overwrite
-
-	# Print the progress bar on the same line with a custom end
-	print(f"\r{percent:>3}% [{'=' * done}{'-' * (bar_width - done)}]", end=end, flush=True)
-
-
 def comics_from_indices(start_idx, end_idx, workdir="."):
 	# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
 	# Passing in an end_idx of < 0 will cause it to end at the end of the folder
@@ -94,6 +83,17 @@ def find_temp_folder():
 		temp_dir = base_dir + str(mod)
 	return temp_dir
 
+def listdir_files(target: str):
+	"""returns relative paths of all files (not directories) in the target directory (shallow)"""
+	return [ p for p in os.listdir(target) if fsp.isfile(fsp.join(target, p)) ]
+
+def listdir_dirs(target: str):
+	"""returns relative paths of all directories in the target directory (shallow)"""
+	return [ p for p in os.listdir(target) if fsp.isdir(fsp.join(target, p)) ]
+
+def rename_page(counter: int | str, ext: str, padding = 5):
+	return f"P{str(counter).rjust(padding, "0")}{ext}"
+
 
 def flatten_tree(abs_directory):
 	"""destructively flattens directory tree to only include files, no folders"""
@@ -111,9 +111,10 @@ def flatten_tree(abs_directory):
 			break
 
 		for f in file_names:
-			new_name = fsp.join(path_to_dir, f"P{str(file_counter).rjust(5, '0')}")
+			new_name = fsp.join(path_to_dir, rename_page(file_counter, Path(f).suffix))
 			os.rename(fsp.join(path_to_dir, f), fsp.join(path_to_dir, new_name))
 			shutil.move(new_name, fsp.join(file_dump_path, f))
+			file_counter += 1
 
 	for subdir in os.scandir(abs_directory):  # yeet all other subdirectories
 		if subdir.path.endswith("_dir_files"):
@@ -167,7 +168,6 @@ class ComicMerge:
 		) as tracked_infolist:
 			for item in tracked_infolist:
 				archive.extract(item, output_dir)
-			
 			archive.close()
 			flatten_tree(fsp.join(self.workdir, output_dir))
 			if self.is_verbose:
@@ -204,8 +204,8 @@ class ComicMerge:
 				for file_name in file_names:
 					file_path = fsp.join(path_to_dir, file_name)
 					ext = os.path.splitext(file_name)[1]
-					new_name = "P" + str(files_moved).rjust(5, "0") + ext
-					log("Renaming & moving " + file_name + " to " + new_name, self.is_verbose)
+					new_name = rename_page(files_moved, ext)
+					# log("Renaming & moving " + file_name + " to " + new_name, self.is_verbose)
 					shutil.copy(file_path, fsp.join(self.temp_dir, new_name))
 					files_moved += 1
 
@@ -216,37 +216,24 @@ class ComicMerge:
 					shutil.rmtree(fsp.join(path_to_dir, subdir_name))
 
 	def _tempdir_to_cbz(self):
-		self._log("Initializing cbz " + self.output_name)
+		zip_file = zipfile.ZipFile(self.output_name, "w", zipfile.ZIP_DEFLATED)
 
-		if self.keep_subfolders:
-			zip_file = zipfile.ZipFile(self.output_name, "w", zipfile.ZIP_DEFLATED)
-			self._log("Adding chapter folders to cbz " + self.output_name)
-
-			add_count = 0
-			for path_to_dir, _, file_names in os.walk(self.temp_dir):
+		if self.keep_subfolders: # temp_dir > n*chapter_dir > k*pages
+			folders = listdir_dirs(self.temp_dir)
+			with click.progressbar(folders, show_percent=True, label="> zipping up") as tracked_folders:
 				page_counter = 1
-				for file_name in file_names:
-					file_path = fsp.join(path_to_dir, file_name)
-					head, tail = os.path.split(file_path)
-
-					ext = os.path.splitext(file_name)[1]
-					new_name = "P" + str(page_counter).rjust(5, "0") + ext
-					zip_file.write(file_path, fsp.join(os.path.split(head)[1], new_name))
-					add_count += 1
-					page_counter += 1
-					if add_count % 10 == 0:
-						print("> " + str(add_count) + " files added.", end="\r")
-		else:
-			zip_file = zipfile.ZipFile(self.output_name, "w", zipfile.ZIP_DEFLATED)
-			self._log("Adding files to cbz " + self.output_name)
-			add_count = 0
-			for path_to_dir, _, file_names in os.walk(self.temp_dir):
-				for file_name in file_names:
-					file_path = fsp.join(path_to_dir, file_name)
-					zip_file.write(file_path, os.path.split(file_path)[1])
-					add_count += 1
-					if add_count % 10 == 0:
-						print("> " + str(add_count) + " files added.", end="\r")
+				for folder in tracked_folders:
+					abs_folder = fsp.join(self.temp_dir, folder)
+					for fn in listdir_files(abs_folder):
+						new_name = rename_page(page_counter, Path(fn).suffix)
+						zip_file.write(fsp.join(self.temp_dir, folder, fn), fsp.join(folder, new_name))
+						page_counter += 1
+		else: # temp_dir > n*k*pages
+			files = [ f for f in os.listdir(self.temp_dir) if fsp.isfile(f) ]
+			with click.progressbar(files, show_percent=True, label="> zipping up") as tracked_listdir:
+				for fn in tracked_listdir:
+					zip_file.write(fsp.join(self.temp_dir, fn), fn)
+						
 
 	def merge(self):
 		# Remove existing existing output file, if any (we're going to overwrite it anyway)

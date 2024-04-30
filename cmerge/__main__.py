@@ -11,7 +11,7 @@ from .cbzmerge import ALLOWED_EXTENSIONS, ComicMerge, comics_in_folder
 @click.argument("output", type=str, required=True)
 @click.argument("inputs", type=str, nargs=-1)
 @click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=os.getcwd(), help="Input folder for comics. If blank, uses current working directory of script.")
-@click.option("--range", "-r", "range_", type=click.IntRange(), nargs=2, default=(0, -1), help="Range (start, end) (inclusive) of comics in folder to merge", )
+@click.option("--range", "-r", "range_", type=click.IntRange(), nargs=2, default=(0, -1), help="Range (start, end) (inclusive, 1-indexed) of comics in folder to merge", )
 @click.option("--chapters", "-c", is_flag=True, help="Don't flatten the directory tree, keep subfolders as chapters")
 @click.option("--quieter", "-q", is_flag=True, help="Less information regarding the merging progress")
 @click.version_option("1.0.0")
@@ -37,7 +37,9 @@ def cli(
 		comics_to_merge = comics_in_folder(workdir=folder)
 
 	if range_ is not None and (range_[0] != 0 and range_[1] != -1): # fallback to range
-		comics_to_merge = comics_to_merge[range_[0]:range_[1]+1]
+		start_idx = max(range_[0]-1, 0)
+		end_idx = min(len(comics_to_merge), range_[1])
+		comics_to_merge = comics_to_merge[start_idx:end_idx]
 
 	if (len(comics_to_merge) == 0):
 		print("Found no supported files for merging.")
