@@ -93,8 +93,8 @@ class ComicMerge:
 		self,
 		output_name,
 		comics_to_merge, 
-		chunk_ch: None | int,
-		chunk_mb: None | int,
+		chunk_ch: None | int = None,
+		chunk_mb: None | int = None,
 		chapters=False,
 		is_verbose=True,
 		workdir="."
