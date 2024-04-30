@@ -88,7 +88,6 @@ def flatten_tree(abs_directory):
 	for folder in listdir_dirs(abs_directory): # sanity check clean all empty folders
 		shutil.rmtree(fsp.join(abs_directory, folder))
 
-
 class ComicMerge:
 	def __init__(
 		self,
@@ -110,6 +109,7 @@ class ComicMerge:
 		self.chunk_ch = chunk_ch
 		self.chunk_mb = chunk_mb
 		self.chuck = chunk_mb is not None or chunk_ch is not None
+		self.flat_page_map: dict[str, list[str]] = {}
 
 		self.workdir = workdir  # comic location
 		self.temp_dir = os.path.abspath(os.path.join(self.workdir, find_temp_folder()))
