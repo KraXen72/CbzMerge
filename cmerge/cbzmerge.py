@@ -221,15 +221,15 @@ class ComicMerge:
 		if self.keep_subfolders: # temp_dir > n*chapter_dir > k*pages
 			folders = listdir_dirs(self.temp_dir)
 			with click.progressbar(folders, show_percent=True, label="> zipping up") as tracked_folders:
-				page_counter = 1
 				for folder in tracked_folders:
 					abs_folder = fsp.join(self.temp_dir, folder)
+					page_counter = 1
 					for fn in listdir_files(abs_folder):
 						new_name = rename_page(page_counter, Path(fn).suffix)
 						zip_file.write(fsp.join(self.temp_dir, folder, fn), fsp.join(folder, new_name))
 						page_counter += 1
 		else: # temp_dir > n*k*pages
-			files = [ f for f in os.listdir(self.temp_dir) if fsp.isfile(f) ]
+			files = listdir_files(self.temp_dir)
 			with click.progressbar(files, show_percent=True, label="> zipping up") as tracked_listdir:
 				for fn in tracked_listdir:
 					zip_file.write(fsp.join(self.temp_dir, fn), fn)
