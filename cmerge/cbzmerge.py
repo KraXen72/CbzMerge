@@ -1,15 +1,25 @@
 import os
+import os.path as fsp  # file system path
 import re
 import shutil
 import zipfile
-from os.path import join
+from pathlib import Path
 
+import click
 import rarfile
 
 # utils to be moved ig
 
 fn_number_pattern = re.compile(r"\d+")
 
+ALLOWED_ZIP = [".cbz", ".zip"]
+ALLOWED_RAR = [".cbr", ".rar"]
+ALLOWED_EXTENSIONS = [
+	*ALLOWED_ZIP,
+	*ALLOWED_RAR
+	# ".cbt", # tar
+	# ".cb7" # 7zip
+]
 
 def log(msg, verbose):
 	"""only logs if verbose == True. accesible outside"""
@@ -18,7 +28,7 @@ def log(msg, verbose):
 
 
 def safe_remove(file_name):
-	if os.path.exists(file_name):
+	if fsp.exists(file_name):
 		os.remove(file_name)
 
 
@@ -65,13 +75,12 @@ def comics_from_indices(start_idx, end_idx, workdir="."):
 	return comics
 
 
-def comics_in_folder(cbr=False, workdir="."):
+def comics_in_folder(workdir="."):
 	print(workdir)
 	comics = []
-	comic_ext = ".cbr" if cbr is True else ".cbz"
 	# We're not traversing subdirectories because that's a boondoggle
 	for file_name in os.listdir(workdir):
-		if os.path.splitext(file_name)[1] == comic_ext:
+		if Path(file_name).suffix.lower() in ALLOWED_EXTENSIONS:
 			comics.append(file_name)
 	return comics
 
@@ -80,7 +89,7 @@ def find_temp_folder():
 	base_dir = "temp_merge"
 	mod = 0
 	temp_dir = base_dir
-	while os.path.exists(temp_dir):
+	while fsp.exists(temp_dir):
 		mod += 1
 		temp_dir = base_dir + str(mod)
 	return temp_dir
@@ -88,23 +97,23 @@ def find_temp_folder():
 
 def flatten_tree(abs_directory):
 	"""destructively flattens directory tree to only include files, no folders"""
-	file_dump_path = join(abs_directory, "_dir_files")
+	file_dump_path = fsp.join(abs_directory, "_dir_files")
 	os.mkdir(file_dump_path)
 
 	file_counter = 1
 	for path_to_dir, subdir_names, file_names in os.walk(abs_directory, True):  # move all files to 1 folder
 		for f in file_names:
 			if ".nomedia" in f:
-				os.remove(join(path_to_dir, f))
+				os.remove(fsp.join(path_to_dir, f))
 				file_names.remove(".nomedia")
 
 		if len(subdir_names) == 0 and (abs_directory == path_to_dir):
 			break
 
 		for f in file_names:
-			new_name = join(path_to_dir, f"P{str(file_counter).rjust(5, '0')}")
-			os.rename(join(path_to_dir, f), join(path_to_dir, new_name))
-			shutil.move(new_name, join(file_dump_path, f))
+			new_name = fsp.join(path_to_dir, f"P{str(file_counter).rjust(5, '0')}")
+			os.rename(fsp.join(path_to_dir, f), fsp.join(path_to_dir, new_name))
+			shutil.move(new_name, fsp.join(file_dump_path, f))
 
 	for subdir in os.scandir(abs_directory):  # yeet all other subdirectories
 		if subdir.path.endswith("_dir_files"):
@@ -113,7 +122,7 @@ def flatten_tree(abs_directory):
 
 	new_path = os.path.split(file_dump_path)[0]
 	for f in os.listdir(file_dump_path):
-		shutil.move(join(file_dump_path, f), join(new_path, f))
+		shutil.move(fsp.join(file_dump_path, f), fsp.join(new_path, f))
 	os.rmdir(file_dump_path)
 
 
@@ -128,75 +137,85 @@ class ComicMerge:
 		self.cbr = cbr
 
 		self.workdir = workdir  # comic location
+		self.temp_dir = os.path.abspath(os.path.join(self.workdir, find_temp_folder()))
+		print("workdir", workdir)
 
 	def _log(self, msg):
 		"""only logs if verbose == True. internal"""
 		log(msg, self.is_verbose)
 
-	def _extract_archive(self, file_name, destination):
+	def _extract_archive(self, file_name, destination, idx: int, total: int):
 		"""
 		file_name = only filename.ext, no path.
 		destination = temp folder
 		"""
-
-		output_dir = join(destination, os.path.splitext(file_name)[0])
+		output_dir = fsp.join(destination, Path(file_name).stem)
 		os.mkdir(output_dir)
-		archive_path = join(self.workdir, file_name)
-		archive = rarfile.RarFile(archive_path) if self.cbr else zipfile.ZipFile(archive_path)
-		archive.extractall(output_dir)
-		archive.close()
-		flatten_tree(join(self.workdir, output_dir))
-		if self.is_verbose:
-			print(f"> extracted {file_name}")
+		archive_path = fsp.join(self.workdir, file_name)
+		archive = None
+		if Path(archive_path).suffix.lower() in ALLOWED_RAR:
+			archive = rarfile.RarFile(archive_path)
+		else:
+			archive = zipfile.ZipFile(archive_path)
+		
+		with click.progressbar(
+			archive.infolist(), 
+			show_percent=True, 
+			show_eta=False, 
+			label=f"> extracting [{idx+1}/{total}]", 
+			item_show_func=lambda _: file_name
+		) as tracked_infolist:
+			for item in tracked_infolist:
+				archive.extract(item, output_dir)
+			
+			archive.close()
+			flatten_tree(fsp.join(self.workdir, output_dir))
+			if self.is_verbose:
+				tracked_infolist.label = f"> extracted {file_name}"
 
-	def _extract_comics(self, comics_to_extract, temp_dir):
-		print("started extracting...")
+
+	def _extract_comics(self, comics_to_extract):
+		print("started extracting...", self.temp_dir)
 		first_archive = -1
 		last_archive = -1
 		for i, file_name in enumerate(comics_to_extract):
-			self._extract_archive(file_name, temp_dir)
-
+			self._extract_archive(file_name, self.temp_dir, i, len(comics_to_extract))
 			archive_num = get_filename_number(file_name)
 			if i == 0:
 				first_archive = archive_num
 			if i == len(comics_to_extract) - 1:
 				last_archive = archive_num
-
-			progress_bar(i, len(comics_to_extract), 50, "")
-
-		progress_bar(1, 1, 50, percent_overwrite=100)
-
+	
 		print(f"first archive: {first_archive}, last archive: {last_archive}")
 
 		if self.keep_subfolders:
 			print("keeping subfolders for chapters")
 			# rename the folders to something more readable: ch001, ch002 etc.
-			folders = os.listdir(temp_dir)
+			folders = os.listdir(self.temp_dir)
 			last_chapter_digits = len(str(len(folders)))  # number of digits the last chapter requires
 			for i in range(len(folders)):
 				folder = folders[i]
 				new_name = "ch" + str(i + 1).zfill(last_chapter_digits + 1)
-				os.rename(join(temp_dir, folder), join(temp_dir, new_name))
+				os.rename(fsp.join(self.temp_dir, folder), fsp.join(self.temp_dir, new_name))
 		else:
 			# Flatten file structure (subdirectories mess with some readers)
-			#
 			files_moved = 1
-			for path_to_dir, subdir_names, file_names in os.walk(temp_dir, False):
+			for path_to_dir, subdir_names, file_names in os.walk(self.temp_dir, False):
 				for file_name in file_names:
-					file_path = join(path_to_dir, file_name)
+					file_path = fsp.join(path_to_dir, file_name)
 					ext = os.path.splitext(file_name)[1]
 					new_name = "P" + str(files_moved).rjust(5, "0") + ext
 					log("Renaming & moving " + file_name + " to " + new_name, self.is_verbose)
-					shutil.copy(file_path, join(temp_dir, new_name))
+					shutil.copy(file_path, fsp.join(self.temp_dir, new_name))
 					files_moved += 1
 
 				# Deletes all subdirectories (in the end we want a flat structure)
 				# This will not affect walking through the rest of the directories,
 				# because it is traversed from the bottom up instead of top down
 				for subdir_name in subdir_names:
-					shutil.rmtree(join(path_to_dir, subdir_name))
+					shutil.rmtree(fsp.join(path_to_dir, subdir_name))
 
-	def _make_cbz_from_dir(self, temp_dir):
+	def _tempdir_to_cbz(self):
 		self._log("Initializing cbz " + self.output_name)
 
 		if self.keep_subfolders:
@@ -204,15 +223,15 @@ class ComicMerge:
 			self._log("Adding chapter folders to cbz " + self.output_name)
 
 			add_count = 0
-			for path_to_dir, subdir_names, file_names in os.walk(temp_dir):
+			for path_to_dir, _, file_names in os.walk(self.temp_dir):
 				page_counter = 1
 				for file_name in file_names:
-					file_path = join(path_to_dir, file_name)
+					file_path = fsp.join(path_to_dir, file_name)
 					head, tail = os.path.split(file_path)
 
 					ext = os.path.splitext(file_name)[1]
 					new_name = "P" + str(page_counter).rjust(5, "0") + ext
-					zip_file.write(file_path, join(os.path.split(head)[1], new_name))
+					zip_file.write(file_path, fsp.join(os.path.split(head)[1], new_name))
 					add_count += 1
 					page_counter += 1
 					if add_count % 10 == 0:
@@ -221,9 +240,9 @@ class ComicMerge:
 			zip_file = zipfile.ZipFile(self.output_name, "w", zipfile.ZIP_DEFLATED)
 			self._log("Adding files to cbz " + self.output_name)
 			add_count = 0
-			for path_to_dir, subdir_names, file_names in os.walk(temp_dir):
+			for path_to_dir, _, file_names in os.walk(self.temp_dir):
 				for file_name in file_names:
-					file_path = join(path_to_dir, file_name)
+					file_path = fsp.join(path_to_dir, file_name)
 					zip_file.write(file_path, os.path.split(file_path)[1])
 					add_count += 1
 					if add_count % 10 == 0:
@@ -236,20 +255,19 @@ class ComicMerge:
 		self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
 
 		# Find and create temporary directory
-		temp_dir = find_temp_folder()
-
-		safe_remove(temp_dir)
-		os.mkdir(temp_dir)
+		safe_remove(self.temp_dir)
+		os.mkdir(self.temp_dir)
 
 		# TODO doesen't work with -f flag yet
 		# TODO chunk splitting support
 		# TODO create a indexed chunk folder
 		# TODO handle max being lower than 1 zip / negative (check sizes beforehand)
 		# TODO properly name the chunks by index (all), range (where possible)
-		self._extract_comics(self.comics_to_merge, temp_dir)
-		self._make_cbz_from_dir(temp_dir)
+		self._extract_comics(self.comics_to_merge)
+		self._tempdir_to_cbz()
 
 		# Clean up temporary folder
-		shutil.rmtree(temp_dir)
+		# print("attempting to rm", self.temp_dir)
+		shutil.rmtree(self.temp_dir)
 		self._log("")
 		print("Successfully merged comics into " + self.output_name + "!")

@@ -177,3 +177,6 @@ temp_merge/**/*
 temp_merge*
 temp_merge*/*
 temp_merge*/**/*
+*.jpg
+*.png
+*.webp
