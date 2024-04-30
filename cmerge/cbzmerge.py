@@ -1,6 +1,5 @@
 import os
 import os.path as fsp  # file system path
-import re
 import shutil
 import zipfile
 from pathlib import Path
@@ -9,11 +8,8 @@ import click
 import filetype
 import rarfile
 
-from cmerge.comicinfo import parse_comicinfo
-
-# utils to be moved ig
-
-fn_number_pattern = re.compile(r"\d+")
+from .comicinfo import parse_comicinfo
+from .util import get_filename_number, listdir_dirs, listdir_files, log, rename_page, safe_remove
 
 ALLOWED_ZIP = [".cbz", ".zip"]
 ALLOWED_RAR = [".cbr", ".rar"]
@@ -24,58 +20,6 @@ ARCHIVE_EXTENSIONS = [
 	# ".cb7" # 7zip
 ]
 
-def log(msg, verbose):
-	"""only logs if verbose == True. accesible outside"""
-	if verbose:
-		print(msg)
-
-
-def safe_remove(file_name):
-	if fsp.exists(file_name):
-		os.remove(file_name)
-
-
-def get_filename_number(file_name):
-	matches = fn_number_pattern.findall(file_name)
-	if len(matches) > 0:
-		return matches[-1]
-	else:
-		return ""
-
-
-def comics_from_prefix(prefix, workdir="."):
-	all_comics = comics_in_folder(workdir=workdir)
-	comics = []
-	for file_name in all_comics:
-		if file_name.startswith(prefix):
-			comics.append(file_name)
-	return comics
-
-
-def comics_from_indices(start_idx, end_idx, workdir="."):
-	# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
-	# Passing in an end_idx of < 0 will cause it to end at the end of the folder
-	# Both start_idx and end_idx are inclusive
-	# Index count starts at 1
-	all_comics = comics_in_folder(workdir=workdir)
-	comics = []
-	comic_idx = 1
-	for file_name in all_comics:
-		if start_idx <= comic_idx and (comic_idx <= end_idx or end_idx < 0):
-			comics.append(file_name)
-		comic_idx += 1
-	return comics
-
-
-def comics_in_folder(workdir="."):
-	comics = []
-	# We're not traversing subdirectories because that's a boondoggle
-	for file_name in os.listdir(workdir):
-		if Path(file_name).suffix.lower() in ARCHIVE_EXTENSIONS:
-			comics.append(file_name)
-	return comics
-
-
 def find_temp_folder():
 	base_dir = "temp_merge"
 	mod = 0
@@ -85,16 +29,36 @@ def find_temp_folder():
 		temp_dir = base_dir + str(mod)
 	return temp_dir
 
-def listdir_files(target: str):
-	"""returns relative paths of all files (not directories) in the target directory (shallow)"""
-	return [ p for p in os.listdir(target) if fsp.isfile(fsp.join(target, p)) ]
+# def comics_from_prefix(prefix, workdir="."):
+# 	all_comics = comics_in_folder(workdir=workdir)
+# 	comics = []
+# 	for file_name in all_comics:
+# 		if file_name.startswith(prefix):
+# 			comics.append(file_name)
+# 	return comics
 
-def listdir_dirs(target: str):
-	"""returns relative paths of all directories in the target directory (shallow)"""
-	return [ p for p in os.listdir(target) if fsp.isdir(fsp.join(target, p)) ]
 
-def rename_page(counter: int | str, ext: str, padding = 5):
-	return f"P{str(counter).rjust(padding, "0")}{ext}"
+# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
+# Passing in an end_idx of < 0 will cause it to end at the end of the folder
+# Both start_idx and end_idx are inclusive
+# Index count starts at 1
+# def comics_from_indices(start_idx, end_idx, workdir="."):
+# 	all_comics = comics_in_folder(workdir=workdir)
+# 	comics = []
+# 	comic_idx = 1
+# 	for file_name in all_comics:
+# 		if start_idx <= comic_idx and (comic_idx <= end_idx or end_idx < 0):
+# 			comics.append(file_name)
+# 		comic_idx += 1
+# 	return comics
+
+
+# def comics_in_folder(workdir="."):
+# 	comics = []
+# 	for file_name in os.listdir(workdir):
+# 		if Path(file_name).suffix.lower() in ARCHIVE_EXTENSIONS:
+# 			comics.append(file_name)
+# 	return comics
 
 
 def flatten_tree(abs_directory):
@@ -188,7 +152,7 @@ class ComicMerge:
 
 		if self.keep_subfolders:
 			print("keeping subfolders for chapters")
-			# rename the folders to something more readable: ch001, ch002 etc.
+
 			folders = os.listdir(self.temp_dir)
 			last_chapter_digits = len(str(len(folders)))  # number of digits the last chapter requires
 			for i in range(len(folders)):
