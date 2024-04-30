@@ -90,14 +90,26 @@ def flatten_tree(abs_directory):
 
 
 class ComicMerge:
-	def __init__(self, output_name, comics_to_merge, is_verbose=True, chapters=False, cbr=False, workdir="."):
+	def __init__(
+		self,
+		output_name,
+		comics_to_merge, 
+		chunk_ch: None | int,
+		chunk_mb: None | int,
+		chapters=False,
+		is_verbose=True,
+		workdir="."
+	):
 		self.output_name = output_name
 		if not self.output_name.endswith(".cbz"):
 			self.output_name = self.output_name + ".cbz"
 		self.comics_to_merge = comics_to_merge
 		self.is_verbose = is_verbose
 		self.keep_subfolders = chapters
-		self.cbr = cbr
+
+		self.chunk_ch = chunk_ch
+		self.chunk_mb = chunk_mb
+		self.chuck = chunk_mb is not None or chunk_ch is not None
 
 		self.workdir = workdir  # comic location
 		self.temp_dir = os.path.abspath(os.path.join(self.workdir, find_temp_folder()))
