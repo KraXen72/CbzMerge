@@ -56,7 +56,14 @@ def cli(
 		print("Found no supported files for merging.")
 		quit()
 
-	comic_merge = ComicMerge(output, comics_to_merge, chapters=chapters, is_verbose=not quieter, workdir=folder)
+	comic_merge = ComicMerge(
+		output, 
+		comics_to_merge,
+		# first_chapter=range_[0] if range_ is not None else 1, 
+		chapters=chapters, 
+		is_verbose=not quieter, 
+		workdir=folder
+	)
 	comic_merge.merge()
 
 cli()

@@ -96,6 +96,7 @@ class ComicMerge:
 		chunk_ch: None | int = None,
 		chunk_mb: None | int = None,
 		chapters=False,
+		first_chapter: int = 1,
 		is_verbose=True,
 		workdir="."
 	):
@@ -106,10 +107,11 @@ class ComicMerge:
 		self.is_verbose = is_verbose
 		self.keep_subfolders = chapters
 
-		self.chunk_ch = chunk_ch
-		self.chunk_mb = chunk_mb
-		self.chuck = chunk_mb is not None or chunk_ch is not None
-		self.flat_page_map: dict[str, list[str]] = {}
+		# self.chunk_ch = chunk_ch
+		# self.chunk_mb = chunk_mb
+		# self.chuck = chunk_mb is not None or chunk_ch is not None
+		# self.flat_page_map: dict[str, list[str]] = {}
+		self.first_chapter = first_chapter
 
 		self.workdir = workdir  # comic location
 		self.temp_dir = os.path.abspath(os.path.join(self.workdir, find_temp_folder()))
@@ -169,7 +171,7 @@ class ComicMerge:
 			last_chapter_digits = len(str(len(folders)))  # number of digits the last chapter requires
 			for i in range(len(folders)):
 				folder = folders[i]
-				new_name = "Chapter " + str(i + 1).zfill(last_chapter_digits + 1)
+				new_name = "Chapter " + str(i + self.first_chapter).zfill(last_chapter_digits + 1)
 				
 				folder_abs = fsp.join(self.temp_dir, folder)
 				for rf in listdir_files(folder_abs):
