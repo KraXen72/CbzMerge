@@ -30,8 +30,8 @@ def get_filename_number(file_name):
 		return ""
 
 
-def comics_from_prefix(prefix, cbr=False, workdir="."):
-	all_comics = comics_in_folder(cbr, workdir=workdir)
+def comics_from_prefix(prefix, workdir="."):
+	all_comics = comics_in_folder(workdir=workdir)
 	comics = []
 	for file_name in all_comics:
 		if file_name.startswith(prefix):
@@ -50,12 +50,12 @@ def progress_bar(curr_index, total_len, bar_width=50, end="\n", percent_overwrit
 	print(f"\r{percent:>3}% [{'=' * done}{'-' * (bar_width - done)}]", end=end, flush=True)
 
 
-def comics_from_indices(start_idx, end_idx, cbr=False, workdir="."):
+def comics_from_indices(start_idx, end_idx, workdir="."):
 	# Passing in a start_idx of <= 0 will cause it to start at the beginning of the folder
 	# Passing in an end_idx of < 0 will cause it to end at the end of the folder
 	# Both start_idx and end_idx are inclusive
 	# Index count starts at 1
-	all_comics = comics_in_folder(cbr, workdir=workdir)
+	all_comics = comics_in_folder(workdir=workdir)
 	comics = []
 	comic_idx = 1
 	for file_name in all_comics:

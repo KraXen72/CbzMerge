@@ -167,6 +167,10 @@ pip-log.txt
 # Comics
 *.cbz
 *.cbr
+*.cb7
+*.cbt
+*.zip
+*.rar
 temp_merge
 temp_merge/*
 temp_merge/**/*
