@@ -249,20 +249,28 @@ class ComicMerge:
 		safe_remove(self.output_name)
 		self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
 
-		chunk_size = 0
+		chunk_size = 0 # MB
 		idx = 0
 		chunk = 0
 		while idx < len(self.comics_to_merge):
 			while chunk_size < self.chunk_mb:
 				self.temp_dir = fsp.abspath(fsp.join(self.workdir, f"temp_chunk_{chunk}"))
-				os.mkdir(self.temp_dir)
+				if not fsp.exists(self.temp_dir):
+					os.mkdir(self.temp_dir)
 				self._extract_comics([self.comics_to_merge[idx]])
 				idx += 1
-				chunk_paths = [ fsp.abspath(fsp.join(self.workdir, ch)) for ch in listdir_dirs(self.workdir) if ch.startswith("temp_chunk_") ]
-				total_size = 0
-				for ch in chunk_paths:
-					total_size += sum(fsp.getsize(f) for f in listdir_files(ch))
-				chunk_size = total_size // 1000000
+				# items = list(Path(self.temp_dir).rglob("**/*"))
+				# print(self.temp_dir, len(items), items[-1])
+
+				# this is still bugged and always adds all the previous files as well
+				# damn, i guess that's how glob works, huh.
+				total_size = 0 # in bytes (1024=kb)
+				for f in Path(self.temp_dir).rglob("**/*"):
+					if not f.is_file():
+						continue
+					# print(f, fsp.getsize(f))
+					total_size += fsp.getsize(f)
+				chunk_size += total_size // (1024**2)
 				print("current", chunk_size, "MB")
 			quit()
 			chunk += 1
