@@ -5,9 +5,8 @@ from pathlib import Path
 import click
 from natsort import natsorted
 
-from cmerge.util import append_to_fn_pre_ext  # pyright: ignore
-
 from .cbzmerge import ARCHIVE_EXTENSIONS, ComicMerge
+from .util import append_to_fn_pre_ext
 
 
 @click.command()
@@ -29,7 +28,7 @@ def cli(
 	chunk_mb: int | None,
 	chapters: bool,
 	quieter: bool, 
-	input_glob: list[str] | str = [],
+	input_glob: list[str] | str = [],  # noqa: B006
 ):
 	comics_to_merge: list[str] = []
 	folder = os.path.abspath(folder)
