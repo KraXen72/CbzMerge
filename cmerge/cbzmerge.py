@@ -279,6 +279,3 @@ class ComicMerge:
 			chunk += 1
 		
 		print("Successfully merged comics into chunks!")
-
-
-
