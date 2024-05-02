@@ -1,6 +1,7 @@
 import os
 import os.path as fsp  # file system path
 import re
+from pathlib import Path
 
 fn_number_pattern = re.compile(r"\d+")
 
@@ -32,3 +33,10 @@ def listdir_dirs(target: str):
 
 def rename_page(counter: int | str, ext: str, padding = 5):
 	return f"P{str(counter).rjust(padding, "0")}{ext}"
+
+def append_to_fn_pre_ext(fn: str, append: str):
+	if "." not in fn:
+		return fn + append
+	else:
+		fnp = Path(fn)
+		return f"{fnp.stem}{append}{fnp.suffix}"

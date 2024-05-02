@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 
 import click
-from natsort import natsorted  # pyright: ignore
+from natsort import natsorted
+
+from cmerge.util import append_to_fn_pre_ext  # pyright: ignore
 
 from .cbzmerge import ARCHIVE_EXTENSIONS, ComicMerge
 
@@ -45,10 +47,8 @@ def cli(
 			if Path(file_path).suffix.lower() in ARCHIVE_EXTENSIONS:
 				comics_to_merge.append(file_path)
 	comics_to_merge = natsorted(comics_to_merge)
-	# else:
-	# 	comics_to_merge = comics_in_folder(workdir=folder)
 
-	if range_ is not None: # fallback to range
+	if range_ is not None:
 		start_idx = max(range_[0]-1, 0)
 		end_idx = min(len(comics_to_merge), range_[1])
 		if end_idx == -1:
@@ -63,7 +63,7 @@ def cli(
 		for i in range(0, len(comics_to_merge), chunk_ch):
 			chunk = comics_to_merge[i:i+chunk_ch]
 			cm_instance = ComicMerge(
-				f"{Path(output).stem if "." in output else output}-{i+1}-{i+chunk_ch}.cbz",
+				append_to_fn_pre_ext(output, f"]{i+1}-{i+chunk_ch}"),
 				chunk,
 				first_chapter=i+1,
 				chapters=chapters,
@@ -71,26 +71,18 @@ def cli(
 				workdir=folder
 			)
 			cm_instance.merge()
-	elif chunk_mb:
+	else:
 		cm_instance = ComicMerge(
 			output, 
 			comics_to_merge,
-			# first_chapter=range_[0] if range_ is not None else 1, 
 			chunk_mb=chunk_mb,
 			chapters=chapters, 
 			is_verbose=not quieter, 
 			workdir=folder
 		)
-		cm_instance.size_chunked_merge()
-	else: 
-		cm_instance = ComicMerge(
-			output, 
-			comics_to_merge,
-			# first_chapter=range_[0] if range_ is not None else 1, 
-			chapters=chapters, 
-			is_verbose=not quieter, 
-			workdir=folder
-		)
-		cm_instance.merge()
+		if chunk_mb:
+			cm_instance.size_chunked_merge()
+		else: 
+			cm_instance.merge()
 
 cli()

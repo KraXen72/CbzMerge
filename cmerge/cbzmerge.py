@@ -9,7 +9,7 @@ import filetype
 import rarfile
 
 from .comicinfo import parse_comicinfo
-from .util import listdir_dirs, listdir_files, log, rename_page, safe_remove
+from .util import append_to_fn_pre_ext, listdir_dirs, listdir_files, log, rename_page, safe_remove
 
 ALLOWED_ZIP = [".cbz", ".zip"]
 ALLOWED_RAR = [".cbr", ".rar"]
@@ -28,6 +28,10 @@ def find_temp_folder():
 		mod += 1
 		temp_dir = base_dir + str(mod)
 	return temp_dir
+
+def rsum_size(path: str):
+	"""recursive sum size"""
+	return sum(fsp.getsize(f) for f in Path(path).rglob("**/*") if f.is_file())
 
 # def comics_from_prefix(prefix, workdir="."):
 # 	all_comics = comics_in_folder(workdir=workdir)
@@ -100,6 +104,7 @@ class ComicMerge:
 		workdir="."
 	):
 		self.output_name = output_name
+		self.orig_output_name = output_name
 		if not self.output_name.endswith(".cbz"):
 			self.output_name = self.output_name + ".cbz"
 		self.comics_to_merge = comics_to_merge
@@ -148,14 +153,7 @@ class ComicMerge:
 			if self.is_verbose:
 				tracked_infolist.label = f"> extracted {archive_fn}"
 
-
-	def _extract_comics(self, comics_to_extract: list[str], msg = True):
-		if msg:
-			print("started extracting...", self.temp_dir)
-
-		for i, file_name in enumerate(comics_to_extract):
-			self._extract_archive(file_name, self.temp_dir, i, len(comics_to_extract))
-
+	def _process_extracted(self, msg = True):
 		if self.keep_subfolders:
 			if msg:
 				print("keeping subfolders for chapters")
@@ -195,6 +193,12 @@ class ComicMerge:
 
 				for subdir_name in subdir_names:
 					shutil.rmtree(fsp.join(path_to_dir, subdir_name))
+
+	def _extract_comics(self, comics_to_extract: list[str]):
+		print("started extracting...", self.temp_dir)
+			
+		for i, file_name in enumerate(comics_to_extract):
+			self._extract_archive(file_name, self.temp_dir, i, len(comics_to_extract))
 			
 
 	def _tempdir_to_cbz(self):
@@ -215,48 +219,64 @@ class ComicMerge:
 			with click.progressbar(files, show_percent=True, label="> zipping up", item_show_func=lambda a: f"{a} > {zip_file.filename}") as tracked_listdir:
 				for fn in tracked_listdir:
 					zip_file.write(fsp.join(self.temp_dir, fn), fn)
-
-	def prepare(self):
-		safe_remove(self.temp_dir)
-		os.mkdir(self.temp_dir)
-
-	def cleanup(self):
-		shutil.rmtree(self.temp_dir)
-
+	
 	def merge(self):
 		# Remove existing existing output file, if any (we're going to overwrite it anyway)
 		safe_remove(self.output_name)
-		self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
+		# self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
+		self._log(f"Merging {len(self.comics_to_merge)} archive files into {self.output_name}")
 		
-		self.prepare()
+		safe_remove(self.temp_dir)
+		os.mkdir(self.temp_dir)
 		self._extract_comics(self.comics_to_merge)
+		self._process_extracted()
 		self._tempdir_to_cbz()
-		self.cleanup()
+		shutil.rmtree(self.temp_dir)
 
 		print("Successfully merged comics into " + self.output_name + "!")
 
 	def size_chunked_merge(self):
 		if self.chunk_mb is None:
 			raise Exception("use the 'merge' method if not passing in chunk_mb")
-		safe_remove(self.output_name)
-		self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
 
-		chunk_size = 0 # MB
-		idx = 0
+		safe_remove(self.output_name)
+		for item in os.listdir(self.workdir):
+			currp = Path(fsp.join(self.workdir, item))
+			if currp.is_dir() and item.startswith("temp_chunk_"):
+				shutil.rmtree(currp)
+
+		# self._log("Merging comics " + str(self.comics_to_merge) + " into file " + self.output_name)
+		self._log(f"Merging {len(self.comics_to_merge)} archive files into {self.output_name} (chunked by {self.chunk_mb}MB)")
+
+		comics_idx = 0
 		chunk = 0
-		while idx < len(self.comics_to_merge):
-			while chunk_size < self.chunk_mb:
+		while comics_idx < len(self.comics_to_merge):
+			curr_chap_dir = ""
+			self.first_chapter = comics_idx + 1
+			chunk_size = 0 # MB
+			while chunk_size < self.chunk_mb: # fill chunk until mb limit is hit or we've run out of comics
 				self.temp_dir = fsp.abspath(fsp.join(self.workdir, f"temp_chunk_{chunk}"))
 				if not fsp.exists(self.temp_dir):
 					os.mkdir(self.temp_dir)
-				# self._extract_comics([self.comics_to_merge[idx]], False)
-				self._extract_archive(self.comics_to_merge[idx], self.temp_dir, str(chunk_size).rjust(len(str(self.chunk_mb))), f"{self.chunk_mb}MB")
-				idx += 1
-				total_size = sum(fsp.getsize(f) for f in Path(self.temp_dir).rglob("**/*") if f.is_file())
-				chunk_size = total_size // (1024**2)
-				# print("current", chunk_size, "MB")
-			quit()
+				self._extract_archive(self.comics_to_merge[comics_idx], self.temp_dir, str(chunk_size).rjust(len(str(self.chunk_mb)))+"+", f"{self.chunk_mb}MB")
+				curr_chap_dir = fsp.join(self.temp_dir, Path(self.comics_to_merge[comics_idx]).stem)
+				comics_idx += 1
+				chunk_size = rsum_size(self.temp_dir) // (1024**2)
+				if comics_idx >= len(self.comics_to_merge): # if we run out of comics, end chunk
+					break
+			if chunk_size >= self.chunk_mb: # delete 
+				shutil.rmtree(curr_chap_dir)
+				comics_idx -= 1
+			
+			print(f"current batch: {rsum_size(self.temp_dir) // (1024**2)}MB ({self.first_chapter}-{comics_idx})")
+			self._process_extracted(msg=False)
+			self.output_name = append_to_fn_pre_ext(self.orig_output_name, f"-{self.first_chapter}-{comics_idx}")
+			self._tempdir_to_cbz()
+			shutil.rmtree(self.temp_dir)
+
 			chunk += 1
+		
+		print("Successfully merged comics into chunks!")
 
 
 
