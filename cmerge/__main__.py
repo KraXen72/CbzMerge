@@ -82,7 +82,7 @@ def cli(
 			workdir=folder
 		)
 		cm_instance.size_chunked_merge()
-	else:
+	else: 
 		cm_instance = ComicMerge(
 			output, 
 			comics_to_merge,
