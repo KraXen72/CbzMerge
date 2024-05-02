@@ -118,14 +118,16 @@ class ComicMerge:
 		"""only logs if verbose == True. internal"""
 		log(msg, self.is_verbose)
 
-	def _extract_archive(self, file_name, destination, idx: int, total: int):
+	def _extract_archive(self, archive_fn: str, destination: str, current: int | str, total: int | str):
 		"""
-		file_name = only filename.ext, no path.
-		destination = temp folder
+		:param archive_fn only filename.ext, no path.  
+		:param destination temp folder
+		:param current current archive index or custom string message for [current/total]  
+		:param total total archive count or custom string message for [current/total]  
 		"""
-		output_dir = fsp.join(destination, Path(file_name).stem)
+		output_dir = fsp.join(destination, Path(archive_fn).stem)
 		os.mkdir(output_dir)
-		archive_path = fsp.join(self.workdir, file_name)
+		archive_path = fsp.join(self.workdir, archive_fn)
 		archive = None
 		if Path(archive_path).suffix.lower() in ALLOWED_RAR:
 			archive = rarfile.RarFile(archive_path)
@@ -136,33 +138,27 @@ class ComicMerge:
 			archive.infolist(), 
 			show_percent=True, 
 			show_eta=False, 
-			label=f"> extracting [{idx+1}/{total}]", 
-			item_show_func=lambda _: file_name
+			label=f"> extracting [{current+1 if isinstance(current, int) else current}/{total}]", 
+			item_show_func=lambda _: archive_fn
 		) as tracked_infolist:
 			for item in tracked_infolist:
 				archive.extract(item, output_dir)
 			archive.close()
 			flatten_tree(fsp.join(self.workdir, output_dir))
 			if self.is_verbose:
-				tracked_infolist.label = f"> extracted {file_name}"
+				tracked_infolist.label = f"> extracted {archive_fn}"
 
 
-	def _extract_comics(self, comics_to_extract: list[str]):
-		print("started extracting...", self.temp_dir)
-		# first_archive = -1
-		# last_archive = -1
+	def _extract_comics(self, comics_to_extract: list[str], msg = True):
+		if msg:
+			print("started extracting...", self.temp_dir)
+
 		for i, file_name in enumerate(comics_to_extract):
 			self._extract_archive(file_name, self.temp_dir, i, len(comics_to_extract))
-			# archive_num = get_filename_number(file_name)
-			# if i == 0:
-			# 	first_archive = archive_num
-			# if i == len(comics_to_extract) - 1:
-			# 	last_archive = archive_num
-	
-		# print(f"first archive: {first_archive}, last archive: {last_archive}")
 
 		if self.keep_subfolders:
-			print("keeping subfolders for chapters")
+			if msg:
+				print("keeping subfolders for chapters")
 
 			folders = os.listdir(self.temp_dir)
 			last_chapter_digits = len(str(len(folders)))  # number of digits the last chapter requires
@@ -194,13 +190,9 @@ class ComicMerge:
 
 					ext = os.path.splitext(file_name)[1]
 					new_name = rename_page(files_moved, ext)
-					# log("Renaming & moving " + file_name + " to " + new_name, self.is_verbose)
 					shutil.copy(file_path, fsp.join(self.temp_dir, new_name))
 					files_moved += 1
 
-				# Deletes all subdirectories (in the end we want a flat structure)
-				# This will not affect walking through the rest of the directories,
-				# because it is traversed from the bottom up instead of top down
 				for subdir_name in subdir_names:
 					shutil.rmtree(fsp.join(path_to_dir, subdir_name))
 			
@@ -257,21 +249,12 @@ class ComicMerge:
 				self.temp_dir = fsp.abspath(fsp.join(self.workdir, f"temp_chunk_{chunk}"))
 				if not fsp.exists(self.temp_dir):
 					os.mkdir(self.temp_dir)
-				self._extract_comics([self.comics_to_merge[idx]])
+				# self._extract_comics([self.comics_to_merge[idx]], False)
+				self._extract_archive(self.comics_to_merge[idx], self.temp_dir, str(chunk_size).rjust(len(str(self.chunk_mb))), f"{self.chunk_mb}MB")
 				idx += 1
-				# items = list(Path(self.temp_dir).rglob("**/*"))
-				# print(self.temp_dir, len(items), items[-1])
-
-				# this is still bugged and always adds all the previous files as well
-				# damn, i guess that's how glob works, huh.
-				total_size = 0 # in bytes (1024=kb)
-				for f in Path(self.temp_dir).rglob("**/*"):
-					if not f.is_file():
-						continue
-					# print(f, fsp.getsize(f))
-					total_size += fsp.getsize(f)
-				chunk_size += total_size // (1024**2)
-				print("current", chunk_size, "MB")
+				total_size = sum(fsp.getsize(f) for f in Path(self.temp_dir).rglob("**/*") if f.is_file())
+				chunk_size = total_size // (1024**2)
+				# print("current", chunk_size, "MB")
 			quit()
 			chunk += 1
 
