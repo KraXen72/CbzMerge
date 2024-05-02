@@ -98,6 +98,7 @@ class ComicMerge:
 		output_name,
 		comics_to_merge, 
 		chunk_mb: None | int = None,
+		convert_format: str | None = None,
 		chapters=False,
 		first_chapter: int = 1,
 		is_verbose=True,
@@ -109,11 +110,12 @@ class ComicMerge:
 			self.output_name = self.output_name + ".cbz"
 		self.comics_to_merge = comics_to_merge
 		self.is_verbose = is_verbose
-		self.keep_subfolders = chapters
 
 		self.chunk_mb = chunk_mb
-		self.flat_page_map: dict[str, list[str]] = {}
 		self.first_chapter = first_chapter
+
+		self.convert_format = convert_format
+		self.keep_subfolders = chapters
 
 		self.workdir = workdir  # comic location
 		self.temp_dir = os.path.abspath(os.path.join(self.workdir, find_temp_folder()))

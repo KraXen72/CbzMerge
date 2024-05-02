@@ -11,13 +11,14 @@ from .util import append_to_fn_pre_ext
 
 @click.command()
 @click.argument("output", type=str, nargs=1)
-@click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=os.getcwd(), help="Input folder for comics. If blank, uses current working directory of script.")
+@click.option("--folder", "-f", type=click.Path(file_okay=False, exists=True, dir_okay=True), default=os.getcwd(), help="Input folder for comics. If blank, uses current working directory of script")
 @click.option("--range", "-r", "range_", type=click.IntRange(), nargs=2, default=(0, -1), help="Range (start, end) (inclusive, 1-indexed) of comics in folder to merge")
 @click.option("--chunk-ch", "-s", type=int, help="Autosplit into chunks by number of chapters.")
-@click.option("--chunk-mb", "-m", type=int, help="Autosplit into chunks by max MB per chunk.")
+@click.option("--chunk-mb", "-m", type=int, help="Autosplit into chunks by max MB per chunk")
 @click.option("--chapters", "-c", is_flag=True, help="Don't flatten the directory tree, keep subfolders as chapters")
 @click.option("--quieter", "-q", is_flag=True, help="Less information regarding the merging progress")
-@click.option("--in", "-i", "input_glob", multiple=True,type=str, help=f"Input glob (relative to --folder). allowed extensions: {", ".join(ARCHIVE_EXTENSIONS)}. use -i='*.cbz' or w/e in powershell.")
+@click.option("--format", "-t", type=click.Choice(["webp", "webpll", "jpeg", "mozjpeg", "png"]), help="Convert images to a different format")
+@click.option("--in", "-i", "input_glob", multiple=True,type=str, help=f"Input glob (relative to --folder). allowed extensions: {", ".join(ARCHIVE_EXTENSIONS)}. Use -i='*.cbz' or w/e in powershell")
 @click.version_option("1.0.0")
 @click.help_option("-h", "--help")
 def cli(
@@ -28,6 +29,7 @@ def cli(
 	chunk_mb: int | None,
 	chapters: bool,
 	quieter: bool, 
+	format: str | None,
 	input_glob: list[str] | str = [],  # noqa: B006
 ):
 	comics_to_merge: list[str] = []
@@ -66,6 +68,7 @@ def cli(
 				chunk,
 				first_chapter=i+1,
 				chapters=chapters,
+				convert_format=format,
 				is_verbose=not quieter,
 				workdir=folder
 			)
@@ -76,6 +79,7 @@ def cli(
 			comics_to_merge,
 			chunk_mb=chunk_mb,
 			chapters=chapters, 
+			convert_format=format,
 			is_verbose=not quieter, 
 			workdir=folder
 		)
