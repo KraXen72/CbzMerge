@@ -17,7 +17,7 @@ from .util import append_to_fn_pre_ext
 @click.option("--chunk-mb", "-m", type=int, help="Autosplit into chunks by max MB per chunk")
 @click.option("--chapters", "-c", is_flag=True, help="Don't flatten the directory tree, keep subfolders as chapters")
 @click.option("--quieter", "-q", is_flag=True, help="Less information regarding the merging progress")
-@click.option("--format", "-t", type=click.Choice(["webp", "webpll", "jpeg", "mozjpeg", "png"]), help="Convert images to a different format")
+@click.option("--format", "-t", "img_format", type=click.Choice(["webp", "webpll", "jpeg", "mozjpeg", "png"]), help="Convert images to a different format")
 @click.option("--in", "-i", "input_glob", multiple=True,type=str, help=f"Input glob (relative to --folder). allowed extensions: {", ".join(ARCHIVE_EXTENSIONS)}. Use -i='*.cbz' or w/e in powershell")
 @click.version_option("1.0.0")
 @click.help_option("-h", "--help")
@@ -29,7 +29,7 @@ def cli(
 	chunk_mb: int | None,
 	chapters: bool,
 	quieter: bool, 
-	format: str | None,
+	img_format: str | None,
 	input_glob: list[str] | str = [],  # noqa: B006
 ):
 	comics_to_merge: list[str] = []
@@ -68,7 +68,7 @@ def cli(
 				chunk,
 				first_chapter=i+1,
 				chapters=chapters,
-				convert_format=format,
+				convert_format=img_format,
 				is_verbose=not quieter,
 				workdir=folder
 			)
@@ -79,7 +79,7 @@ def cli(
 			comics_to_merge,
 			chunk_mb=chunk_mb,
 			chapters=chapters, 
-			convert_format=format,
+			convert_format=img_format,
 			is_verbose=not quieter, 
 			workdir=folder
 		)
