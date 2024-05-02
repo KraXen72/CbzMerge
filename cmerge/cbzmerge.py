@@ -9,7 +9,7 @@ import filetype
 import rarfile
 
 from .comicinfo import parse_comicinfo
-from .util import get_filename_number, listdir_dirs, listdir_files, log, rename_page, safe_remove
+from .util import listdir_dirs, listdir_files, log, rename_page, safe_remove
 
 ALLOWED_ZIP = [".cbz", ".zip"]
 ALLOWED_RAR = [".cbr", ".rar"]
@@ -152,17 +152,17 @@ class ComicMerge:
 
 	def _extract_comics(self, comics_to_extract):
 		print("started extracting...", self.temp_dir)
-		first_archive = -1
-		last_archive = -1
+		# first_archive = -1
+		# last_archive = -1
 		for i, file_name in enumerate(comics_to_extract):
 			self._extract_archive(file_name, self.temp_dir, i, len(comics_to_extract))
-			archive_num = get_filename_number(file_name)
-			if i == 0:
-				first_archive = archive_num
-			if i == len(comics_to_extract) - 1:
-				last_archive = archive_num
+			# archive_num = get_filename_number(file_name)
+			# if i == 0:
+			# 	first_archive = archive_num
+			# if i == len(comics_to_extract) - 1:
+			# 	last_archive = archive_num
 	
-		print(f"first archive: {first_archive}, last archive: {last_archive}")
+		# print(f"first archive: {first_archive}, last archive: {last_archive}")
 
 		if self.keep_subfolders:
 			print("keeping subfolders for chapters")
@@ -213,7 +213,7 @@ class ComicMerge:
 
 		if self.keep_subfolders: # temp_dir > n*chapter_dir > k*pages
 			folders = listdir_dirs(self.temp_dir)
-			with click.progressbar(folders, show_percent=True, label="> zipping up") as tracked_folders:
+			with click.progressbar(folders, show_percent=True, label="> zipping up", item_show_func=lambda a: f"{a} > {zip_file.filename}") as tracked_folders:
 				for folder in tracked_folders:
 					abs_folder = fsp.join(self.temp_dir, folder)
 					page_counter = 1
@@ -223,7 +223,7 @@ class ComicMerge:
 						page_counter += 1
 		else: # temp_dir > n*k*pages
 			files = listdir_files(self.temp_dir)
-			with click.progressbar(files, show_percent=True, label="> zipping up") as tracked_listdir:
+			with click.progressbar(files, show_percent=True, label="> zipping up", item_show_func=lambda a: f"{a} > {zip_file.filename}") as tracked_listdir:
 				for fn in tracked_listdir:
 					zip_file.write(fsp.join(self.temp_dir, fn), fn)
 						
@@ -244,5 +244,4 @@ class ComicMerge:
 		# Clean up temporary folder
 		# print("attempting to rm", self.temp_dir)
 		shutil.rmtree(self.temp_dir)
-		self._log("")
 		print("Successfully merged comics into " + self.output_name + "!")
