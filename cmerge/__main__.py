@@ -72,7 +72,16 @@ def cli(
 			)
 			cm_instance.merge()
 	elif chunk_mb:
-		pass
+		cm_instance = ComicMerge(
+			output, 
+			comics_to_merge,
+			# first_chapter=range_[0] if range_ is not None else 1, 
+			chunk_mb=chunk_mb,
+			chapters=chapters, 
+			is_verbose=not quieter, 
+			workdir=folder
+		)
+		cm_instance.size_chunked_merge()
 	else:
 		cm_instance = ComicMerge(
 			output, 
