@@ -196,6 +196,14 @@ class ComicMerge:
 				for subdir_name in subdir_names:
 					shutil.rmtree(fsp.join(path_to_dir, subdir_name))
 
+		if self.convert_format is not None:
+			self._convert_images(self.temp_dir, self.convert_format)
+		
+	def _convert_images(self, temp_dir: str, format: str):
+		# using pil image library, convert images to either jpeg, png, webp or mozJPEG.
+		# use the following conversion rate for quality of each format: jpeg 50 60 70 80, avif 48 51 52 53
+		pass
+
 	def _extract_comics(self, comics_to_extract: list[str]):
 		print("started extracting...", self.temp_dir)
 			
