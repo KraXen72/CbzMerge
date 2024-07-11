@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 import filetype
 import rarfile
+from natsort import natsorted
 
 from .comicinfo import parse_comicinfo
 from .util import append_to_fn_pre_ext, listdir_dirs, listdir_files, log, rename_page, safe_remove
@@ -80,7 +81,7 @@ def flatten_tree(abs_directory):
 		if len(subdir_names) == 0 and (abs_directory == path_to_dir):
 			break
 
-		for f in file_names: # dump all of current directory's files into it's dump dir
+		for f in natsorted(file_names): # dump all of current directory's files into it's dump dir
 			new_name = fsp.join(path_to_dir, rename_page(file_counter, Path(f).suffix))
 			os.rename(fsp.join(path_to_dir, f), fsp.join(path_to_dir, new_name))
 			shutil.move(new_name, fsp.join(file_dump_path, f))
@@ -181,7 +182,7 @@ class ComicMerge:
 			# Flatten file structure (subdirectories mess with some readers)
 			files_moved = 1
 			for path_to_dir, subdir_names, file_names in os.walk(self.temp_dir, False):
-				for file_name in file_names:
+				for file_name in natsorted(file_names):
 					file_path = fsp.join(path_to_dir, file_name)
 
 					if not filetype.is_image(file_path):
@@ -199,9 +200,11 @@ class ComicMerge:
 		if self.convert_format is not None:
 			self._convert_images(self.temp_dir, self.convert_format)
 		
-	def _convert_images(self, temp_dir: str, format: str):
+	def _convert_images(self, temp_dir: str, img_fmt: str):
 		# using pil image library, convert images to either jpeg, png, webp or mozJPEG.
-		# use the following conversion rate for quality of each format: jpeg 50 60 70 80, avif 48 51 52 53
+		# use the following conversion rate for quality of each format: jpeg 50 60 70 80, avif 48 51 52 53, webp 55 64 72 82
+		
+
 		pass
 
 	def _extract_comics(self, comics_to_extract: list[str]):
@@ -220,7 +223,7 @@ class ComicMerge:
 				for folder in tracked_folders:
 					abs_folder = fsp.join(self.temp_dir, folder)
 					page_counter = 1
-					for fn in listdir_files(abs_folder):
+					for fn in natsorted(listdir_files(abs_folder)):
 						new_name = rename_page(page_counter, Path(fn).suffix)
 						zip_file.write(fsp.join(self.temp_dir, folder, fn), fsp.join(folder, new_name))
 						page_counter += 1
